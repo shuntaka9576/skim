@@ -9,6 +9,7 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::time::Duration;
+use regex::Regex;
 
 use util::eventbox::EventBox;
 use event::{Event, parse_action};
@@ -65,13 +66,19 @@ impl Input {
 
     // keymap is comma separated: 'ctrl-j:accept,ctrl-k:kill-line'
     pub fn parse_keymap(&mut self, keymap: Option<String>) {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r#".*?:.*?(?:".*?"|'.*?'|\(.*?\)|\[.*?\])?(,|$)"#).unwrap();
+            static ref RE_BIND: Regex = Regex::new(r#"(.*?):([^:\(\["']*)(?:[:\(\["']?([^\)\]"']+)[\)"'\]]?)?"#).unwrap();
+        }
+
         if let Some(key_action) = keymap {
-            for pair in key_action.split(',') {
-                let vec: Vec<&str> = pair.split(':').collect();
-                if vec.len() < 2 {
+            for (start, end) in RE.find_iter(&key_action) {
+                let caps = RE_BIND.captures(&key_action[start..end]).unwrap();
+
+                if caps.at(1).is_none() && caps.at(2).is_none() {
                     continue;
                 } else {
-                    self.bind(vec[0], vec[1], vec.get(2).map(|&string| string.to_string()));
+                    self.bind(caps.at(1).unwrap(), caps.at(2).unwrap(), caps.at(3).map(|s| s.to_string()));
                 }
             }
         }

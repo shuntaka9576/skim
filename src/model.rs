@@ -15,6 +15,9 @@ use event::Event;
 use std::time::{Instant, Duration};
 use std::thread;
 use getopts;
+use std::process::{Command, Stdio};
+use std::os::unix::io::FromRawFd;
+use libc::{STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO,};
 
 // The whole screen is:
 //
@@ -68,6 +71,7 @@ pub struct Model {
     curses: Curses,
     timer: Instant,
     accept_key: Option<String>,
+    replace_str: String,
 }
 
 impl Model {
@@ -100,6 +104,7 @@ impl Model {
             timer: timer,
             accept_key: None,
             is_interactive: false,
+               replace_str: "{}".to_string(),
         }
     }
 
@@ -115,6 +120,9 @@ impl Model {
         }
         if let Some(query) = options.opt_str("q") {
             self.query = Query::new_with_query(&query);
+        }
+        if let Some(replace_str) = options.opt_str("I") {
+            self.replace_str = replace_str.clone();
         }
     }
 
@@ -444,6 +452,54 @@ impl Model {
 
     pub fn act_end_of_line(&mut self) {
         let _ = self.query.end_of_line();
+    }
+
+    pub fn act_execute(&mut self, cmd: String) {
+        let mut matched_items = self.matched_items.write().unwrap();
+        let mut items = self.items.write().unwrap();
+        if let Some(matched) = matched_items.get(self.item_cursor) {
+            let arg = items[matched.index].get_output_text();
+
+            self.curses.endwin();
+            let _ = Command::new("bash")
+                .arg("-c")
+                .arg(cmd.replace(&self.replace_str, arg))
+                .stdin(unsafe{Stdio::from_raw_fd(STDIN_FILENO)})
+                .stdout(unsafe{Stdio::from_raw_fd(STDOUT_FILENO)})
+                .stderr(unsafe{Stdio::from_raw_fd(STDERR_FILENO)})
+                .status()
+                .expect("failed to execute process");
+            self.curses.refresh();
+        }
+    }
+
+    pub fn act_execute_multi(&mut self, cmd: String) {
+        let num_selected = self.selected_indics.len();
+        if num_selected <= 0 {
+            self.act_execute(cmd);
+            return
+        }
+
+        let mut selected = self.selected_indics.iter().collect::<Vec<&usize>>();
+        selected.sort();
+
+        let mut items = self.items.write().unwrap();
+        let mut args = String::new();
+        for index in selected {
+            args.push_str(items[*index].get_output_text().clone());
+            args.push_str(" ");
+        }
+
+        self.curses.endwin();
+        let _ = Command::new("sh")
+            .arg("-c")
+            .arg(cmd.replace(&self.replace_str, args.trim_right()))
+            .stdin(unsafe{Stdio::from_raw_fd(STDIN_FILENO)})
+            .stdout(unsafe{Stdio::from_raw_fd(STDOUT_FILENO)})
+            .stderr(unsafe{Stdio::from_raw_fd(STDERR_FILENO)})
+            .status()
+            .expect("failed to execute process");
+        self.curses.refresh();
     }
 
     pub fn act_forward_char(&mut self) {

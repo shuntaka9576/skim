@@ -298,6 +298,16 @@ fn real_main() -> i32 {
                     model.print_query();
                 }
 
+                Event::EvActExecute => {
+                    let cmd: Option<String> = *val.downcast().unwrap();
+                    model.act_execute(cmd.unwrap_or(String::new()));
+                }
+
+                Event::EvActExecuteMulti => {
+                    let cmd: Option<String> = *val.downcast().unwrap();
+                    model.act_execute_multi(cmd.unwrap_or(String::new()));
+                }
+
                 Event::EvActForwardChar => {
                     model.act_forward_char();
                     model.print_query();

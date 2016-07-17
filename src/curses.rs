@@ -162,6 +162,14 @@ impl Curses {
         attroff(attr);
     }
 
+    pub fn endwin(&self) {
+        endwin();
+    }
+
+    pub fn refresh(&self) {
+        refresh();
+    }
+
     pub fn close(&self) {
         endwin();
         delscreen(self.screen);
