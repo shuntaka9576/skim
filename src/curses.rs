@@ -17,6 +17,7 @@ use std::fs::OpenOptions;
 use std::os::unix::io::{IntoRawFd, RawFd};
 use libc;
 use clap::ArgMatches;
+use types::{Margin, Direction};
 
 pub static COLOR_NORMAL: u16 = 0;
 pub static COLOR_PROMPT: u16 = 1;
@@ -84,27 +85,6 @@ pub fn ansi_contains_reset(key: attr_t) -> bool {
     text == &"\x1B[m" || text == &"\x1B[0m" || text.ends_with(";0m")
 }
 
-//==============================================================================
-
-#[derive(PartialEq, Eq, Clone, Debug, Copy)]
-pub enum Margin {
-    Fixed(u16),
-    Percent(u16),
-}
-
-// A curse object is an abstraction of the screen to be draw on
-// |
-// |
-// |
-// +------------+ start_line
-// |  ^         |
-// | <          | <-- top = start_line + margin_top
-// |  (margins) |
-// |           >| <-- bottom = end_line - margin_bottom
-// |          v |
-// +------------+ end_line
-// |
-// |
 
 pub struct Window {
     top: u16,
@@ -410,14 +390,6 @@ impl Window {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug, Copy)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
 pub struct Curses {
     //screen: SCREEN,
     term: Option<Box<Write>>,
@@ -464,7 +436,7 @@ impl Curses {
         let height = options
             .values_of("height")
             .and_then(|vals| vals.last())
-            .map(Curses::parse_margin_string)
+            .map(Margin::parse_margin_string)
             .expect("height should have default values");
 
         let height = if no_height {
@@ -534,7 +506,7 @@ impl Curses {
         let margins = options
             .values_of("margin")
             .and_then(|vals| vals.last())
-            .map(Curses::parse_margin)
+            .map(Margin::parse_margin)
             .expect("option margin is should be specified (by default)");
         let (margin_top, margin_right, margin_bottom, margin_left) = margins;
 
@@ -618,52 +590,6 @@ impl Curses {
         (y - 1, x - 1)
     }
 
-    fn parse_margin_string(margin: &str) -> Margin {
-        if margin.ends_with('%') {
-            Margin::Percent(min(
-                100,
-                margin[0..margin.len() - 1].parse::<u16>().unwrap_or(100),
-            ))
-        } else {
-            Margin::Fixed(margin.parse::<u16>().unwrap_or(0))
-        }
-    }
-
-    pub fn parse_margin(margin_option: &str) -> (Margin, Margin, Margin, Margin) {
-        let margins = margin_option.split(',').collect::<Vec<&str>>();
-
-        match margins.len() {
-            1 => {
-                let margin = Curses::parse_margin_string(margins[0]);
-                (margin, margin, margin, margin)
-            }
-            2 => {
-                let margin_tb = Curses::parse_margin_string(margins[0]);
-                let margin_rl = Curses::parse_margin_string(margins[1]);
-                (margin_tb, margin_rl, margin_tb, margin_rl)
-            }
-            3 => {
-                let margin_top = Curses::parse_margin_string(margins[0]);
-                let margin_rl = Curses::parse_margin_string(margins[1]);
-                let margin_bottom = Curses::parse_margin_string(margins[2]);
-                (margin_top, margin_rl, margin_bottom, margin_rl)
-            }
-            4 => {
-                let margin_top = Curses::parse_margin_string(margins[0]);
-                let margin_right = Curses::parse_margin_string(margins[1]);
-                let margin_bottom = Curses::parse_margin_string(margins[2]);
-                let margin_left = Curses::parse_margin_string(margins[3]);
-                (margin_top, margin_right, margin_bottom, margin_left)
-            }
-            _ => (
-                Margin::Fixed(0),
-                Margin::Fixed(0),
-                Margin::Fixed(0),
-                Margin::Fixed(0),
-            ),
-        }
-    }
-
     // -> (direction, size, wrap, shown)
     fn parse_preview(preview_option: &str) -> (Direction, Margin, bool, bool) {
         let options = preview_option.split(':').collect::<Vec<&str>>();
@@ -683,7 +609,7 @@ impl Curses {
 
             // raw string
             if first_char.is_digit(10) {
-                size = Curses::parse_margin_string(option);
+                size = Margin::parse_margin_string(option);
             } else {
                 match option.to_uppercase().as_str() {
                     "UP" => direction = Direction::Up,

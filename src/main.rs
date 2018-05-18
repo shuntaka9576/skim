@@ -25,6 +25,8 @@ mod query;
 mod ansi;
 mod sender;
 mod field;
+mod screen;
+mod types;
 
 use std::thread;
 use std::time::Duration;
