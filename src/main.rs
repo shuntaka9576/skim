@@ -134,14 +134,19 @@ fn main() {
 fn real_main() -> i32 {
     let mut args = Vec::new();
 
+    // 最初の引数がない場合が、文字列を出力してpanic
     args.push(env::args().next().expect("there should be at least one arg: the application name"));
+    println!("args(before) {:?}", args);
+
     args.extend(env::var("SKIM_DEFAULT_OPTIONS")
                 .ok()
-                .and_then(|val| shlex::split(&val))
-                .unwrap_or_default());
+                .and_then(|val| shlex::split(&val)) // TODO shlexの使われ方
+                .unwrap_or_default()); // Someに含まれている値を返す、それ以外はタイプのデフォルトを返す
+    // TODO Defaultや後のコード書き方によって型注釈が必要なくなったりする挙動について..
     for arg in env::args().skip(1) {
         args.push(arg);
     }
+    println!("args(after ) {:?}", args);
 
 
     //------------------------------------------------------------------------------
@@ -217,7 +222,7 @@ fn real_main() -> i32 {
         return 0;
     }
 
-    let options = parse_options(&opts);
+    let options = parse_options(&opts); // clap::AppからSkimOptionに変換
 
     if opts.is_present("filter") {
         return Skim::filter(&options, None);
@@ -225,7 +230,8 @@ fn real_main() -> i32 {
 
     let output_ending = if options.print0 {"\0"} else {"\n"};
 
-    let output = Skim::run_with(&options, None);
+    let output = Skim::run_with(&options, None); // ここがUI部分も含めて重要な処理
+    /*
     if output.is_none() {
         return 130;
     }
@@ -250,6 +256,8 @@ fn real_main() -> i32 {
     }
 
     if output.selected_items.is_empty() {1} else {0}
+    */
+    return 0
 }
 
 fn parse_options<'a>(options: &'a ArgMatches) -> SkimOptions<'a> {

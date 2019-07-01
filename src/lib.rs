@@ -42,7 +42,9 @@ use tuikit::prelude::{Event as TermEvent, *};
 pub struct Skim {}
 
 impl Skim {
+    // TODO main関数から呼ばれるときsourceはNone
     pub fn run_with(options: &SkimOptions, source: Option<Box<dyn BufRead + Send>>) -> Option<SkimOutput> {
+        println!("{:?}", options);
         let min_height = options
             .min_height
             .map(Skim::parse_height_string)
@@ -52,14 +54,16 @@ impl Skim {
             .map(Skim::parse_height_string)
             .expect("height should have default values");
 
+        // std::sync系パッケージを使った処理
         let (tx, rx): (EventSender, EventReceiver) = channel();
         let term = Arc::new(Term::with_options(TermOptions::default().min_height(min_height).height(height)).unwrap());
+        // -> term tx rxはsync系変数
 
         //------------------------------------------------------------------------------
         // input
         let mut input = input::Input::new();
-        input.parse_keymaps(&options.bind);
-        input.parse_expect_keys(options.expect.as_ref().map(|x| &**x));
+        input.parse_keymaps(&options.bind); //options.bind
+        input.parse_expect_keys(options.expect.as_ref().map(|x| &**x)); //option.expect
         let tx_clone = tx.clone();
         let term_clone = term.clone();
         let input_thread = thread::spawn(move || 'outer: loop {
@@ -80,6 +84,7 @@ impl Skim {
         // in piped situation(e.g. `echo "a" | sk`) set source to the pipe
         let source = source.or_else(|| {
             let stdin = std::io::stdin();
+            // AsRawFd
             if !isatty(stdin.as_raw_fd()).unwrap_or(true) {
                 Some(Box::new(BufReader::new(stdin)))
             } else {
@@ -91,7 +96,7 @@ impl Skim {
 
         //------------------------------------------------------------------------------
         // start a timer for notifying refresh
-        let _ = tx.send((EvHeartBeat, Box::new(true)));
+        let _ = tx.send((EvHeartBeat, Box::new(true))); // これがないと結果が出力されない
 
         //------------------------------------------------------------------------------
         // model + previewer
