@@ -149,6 +149,7 @@ pub fn parse_action_arg(action_arg: &str) -> Option<(Event, EventArg)> {
 }
 
 #[rustfmt::skip]
+// keymapを定義
 fn get_default_key_map() -> HashMap<Key, ActionChain> {
     use self::ActionArg::*;
     let mut ret = HashMap::new();

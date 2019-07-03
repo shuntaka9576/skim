@@ -44,7 +44,6 @@ pub struct Skim {}
 impl Skim {
     // TODO main関数から呼ばれるときsourceはNone
     pub fn run_with(options: &SkimOptions, source: Option<Box<dyn BufRead + Send>>) -> Option<SkimOutput> {
-        println!("{:?}", options);
         let min_height = options
             .min_height
             .map(Skim::parse_height_string)
@@ -71,15 +70,12 @@ impl Skim {
 
         // 非同期処理
         let input_thread = thread::spawn(move || 'outer: loop {
-            // poll_event()難しい..
             if let Ok(key) = term_clone.poll_event() {
-                // keyがTermEvent::User1の場合はloopが終わる?
-                // Ctr+cとか?
                 if key == TermEvent::User1 {
                     break;
                 }
 
-                // keyからイベントに翻訳して、tx_cloneで通知する
+                // tx.sendで(event, 何か?)を送信している
                 for (ev, arg) in input.translate_event(key).into_iter() {
                     let _ = tx_clone.send((ev, arg));
                 }
@@ -89,7 +85,8 @@ impl Skim {
         let reader = Reader::with_options(&options); // sourceを削除
 
         //------------------------------------------------------------------------------
-        // start a timer for notifying refresh
+        // start a timer for notifying refresh(リフレッシュを通知するためのtimerを開始する)
+        // 上記同様送信している
         let _ = tx.send((EvHeartBeat, Box::new(true))); // これがないと結果が出力されない
 
         //------------------------------------------------------------------------------
