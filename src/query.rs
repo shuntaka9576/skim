@@ -393,6 +393,7 @@ impl EventHandler for Query {
         let cmd_after_len = self.cmd_after.len();
 
         match event {
+            // 文字列追加した際の動作
             EvActAddChar => {
                 let ch: char = *arg.downcast_ref().expect("EvActAddChar: failed to get argument");
                 self.act_add_char(ch);

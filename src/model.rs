@@ -2,6 +2,7 @@ use std::env;
 use std::mem;
 use std::process::Command;
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use chrono::Duration as TimerDuration;
@@ -382,10 +383,13 @@ impl Model {
             } else {
                 break; // end of the event stream;
             };
+            // thread::sleep_ms(1000);
 
             match ev {
+                // TODO 一定間隔でEvEeartBeatをどれが送っているのか不明
                 Event::EvHeartBeat => {
                     // consume follwing HeartBeat event
+                    // println!("Beat!");
                     next_event = self.consume_additional_event(Event::EvHeartBeat);
                     self.act_heart_beat(&mut env);
                 }
@@ -477,12 +481,15 @@ impl Model {
             }
 
             // dispatch events to sub-components
-
+            /*
             if self.header.accept_event(ev) {
                 self.header.handle(ev, &arg);
             }
+            */
 
+            // EvActAddCharを拾うところ(もちろん他の特定のイベントも)
             if self.query.accept_event(ev) {
+                // println!("true! {:?}", ev);
                 self.query.handle(ev, &arg);
                 env.cmd_query = self.query.get_cmd_query();
 
@@ -519,7 +526,7 @@ impl Model {
 
             let _ = self.term.draw(self);
             let _ = self.term.present();
-        }
+        } // loop 終了
 
         None
     }
@@ -535,7 +542,7 @@ impl Model {
             }
         }
         // once the event is peeked, it is removed from the pipe, thus need to be saved.
-        return rx_try_iter.next();
+        return rx_try_iter.next(); // カーソルを進めてイベントを消費する
     }
 
     fn restart_matcher(&mut self) {

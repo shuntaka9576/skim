@@ -65,18 +65,20 @@ impl Skim {
         input.parse_keymaps(&options.bind); // ユーザー入力値を代入
         input.parse_expect_keys(options.expect.as_ref().map(|x| &**x)); // ユーザー入力値を代入
 
-        let tx_clone = tx.clone(); // TODO txをなぜcloneするのか?
+        let tx_clone = tx.clone(); // 送信側を増やす
         let term_clone = term.clone(); // pointerを取得
 
         // 非同期処理
         let input_thread = thread::spawn(move || 'outer: loop {
             if let Ok(key) = term_clone.poll_event() {
                 if key == TermEvent::User1 {
-                    break;
+                    // thread::sleep_ms(5000);
+                    break; // model.start()の後にsendされている
                 }
 
                 // tx.sendで(event, 何か?)を送信している
                 for (ev, arg) in input.translate_event(key).into_iter() {
+                    // println!("{:?}", ev);
                     let _ = tx_clone.send((ev, arg));
                 }
             }
@@ -97,7 +99,7 @@ impl Skim {
         // println!("model.start()が無限ループ");
         // thread::sleep_ms(5000);
         let _ = term.send_event(TermEvent::User1); // interrupt the input thread
-        let _ = input_thread.join();
+        let _ = input_thread.join(); // スレッド終了まで待機
         let _ = term.pause();
         ret
     }
