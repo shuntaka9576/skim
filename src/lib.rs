@@ -92,7 +92,10 @@ impl Skim {
         //------------------------------------------------------------------------------
         // model + previewer
         let mut model = Model::new(rx, tx, reader, term.clone(), &options);
-        let ret = model.start();
+        let ret = model.start(); // イベントレシーバ処理の根幹がここっぽい
+
+        // println!("model.start()が無限ループ");
+        // thread::sleep_ms(5000);
         let _ = term.send_event(TermEvent::User1); // interrupt the input thread
         let _ = input_thread.join();
         let _ = term.pause();
