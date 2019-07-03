@@ -55,18 +55,23 @@ impl Skim {
             .expect("height should have default values");
 
         // std::sync系パッケージを使った処理
-        let (tx, rx): (EventSender, EventReceiver) = channel();
+        let (tx, rx): (EventSender, EventReceiver) = channel(); // なぜ型注釈をつけているのか？ここは型推論で問題なさそう
+
+        // Arc型
         let term = Arc::new(Term::with_options(TermOptions::default().min_height(min_height).height(height)).unwrap());
-        // -> term tx rxはsync系変数
 
         //------------------------------------------------------------------------------
         // input
-        let mut input = input::Input::new();
-        input.parse_keymaps(&options.bind); //options.bind
-        input.parse_expect_keys(options.expect.as_ref().map(|x| &**x)); //option.expect
-        let tx_clone = tx.clone();
-        let term_clone = term.clone();
+        let mut input = input::Input::new(); // optionからえられた値(ユーザーの入力値) = input
+        input.parse_keymaps(&options.bind); // ユーザー入力値を代入
+        input.parse_expect_keys(options.expect.as_ref().map(|x| &**x)); // ユーザー入力値を代入
+
+        let tx_clone = tx.clone(); // TODO txをなぜcloneするのか?
+        let term_clone = term.clone(); // pointerを取得
+
+        // 非同期処理
         let input_thread = thread::spawn(move || 'outer: loop {
+            // poll_event()難しい..
             if let Ok(key) = term_clone.poll_event() {
                 if key == TermEvent::User1 {
                     break;
@@ -78,21 +83,7 @@ impl Skim {
             }
         });
 
-        //------------------------------------------------------------------------------
-        // reader
-
-        // in piped situation(e.g. `echo "a" | sk`) set source to the pipe
-        let source = source.or_else(|| {
-            let stdin = std::io::stdin();
-            // AsRawFd
-            if !isatty(stdin.as_raw_fd()).unwrap_or(true) {
-                Some(Box::new(BufReader::new(stdin)))
-            } else {
-                None
-            }
-        });
-
-        let reader = Reader::with_options(&options).source(source);
+        let reader = Reader::with_options(&options); // sourceを削除
 
         //------------------------------------------------------------------------------
         // start a timer for notifying refresh
