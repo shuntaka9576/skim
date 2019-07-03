@@ -73,10 +73,13 @@ impl Skim {
         let input_thread = thread::spawn(move || 'outer: loop {
             // poll_event()難しい..
             if let Ok(key) = term_clone.poll_event() {
+                // keyがTermEvent::User1の場合はloopが終わる?
+                // Ctr+cとか?
                 if key == TermEvent::User1 {
                     break;
                 }
 
+                // keyからイベントに翻訳して、tx_cloneで通知する
                 for (ev, arg) in input.translate_event(key).into_iter() {
                     let _ = tx_clone.send((ev, arg));
                 }
