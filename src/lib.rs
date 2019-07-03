@@ -77,8 +77,9 @@ impl Skim {
                 }
 
                 // tx.sendで(event, 何か?)を送信している
+                // key入力をevent.rsの型に翻訳
                 for (ev, arg) in input.translate_event(key).into_iter() {
-                    // println!("{:?}", ev);
+                    // println!("{:?}, {:?}", ev, arg);
                     let _ = tx_clone.send((ev, arg));
                 }
             }

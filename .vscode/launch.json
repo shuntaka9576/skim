@@ -1,0 +1,138 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'skim'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "skim",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'sk'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=sk",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "sk",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'sk'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=sk",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "sk",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'sample'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=sample",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "sample",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'sample'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=sample",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "sample",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'option_builder'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=option_builder",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "option_builder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'option_builder'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=option_builder",
+                    "--package=skim"
+                ],
+                "filter": {
+                    "name": "option_builder",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

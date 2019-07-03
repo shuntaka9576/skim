@@ -83,21 +83,29 @@ impl Model {
             Ok("") | Err(_) => "find .".to_owned(),
             Ok(val) => val.to_owned(),
         };
-
+        // ColorThemを初期化
         let theme = Arc::new(ColorTheme::init_from_options(options));
+
+        // queryにthemeを代入
         let query = Query::from_options(&options)
             .replace_base_cmd_if_not_set(&default_command)
             .theme(theme.clone())
             .build();
 
+        // selectionにthemeを代入
         let selection = Selection::with_options(options).theme(theme.clone());
+
+        // matcher
         let matcher = Matcher::with_options(options);
+
+        // ItemPool
         let item_pool = Arc::new(ItemPool::new().lines_to_reserve(options.header_lines));
+        // header
         let header = Header::empty().with_options(options).item_pool(item_pool.clone());
 
         let margins = options
             .margin
-            .map(parse_margin)
+            .map(parse_margin) // Someを取り除く
             .expect("option margin is should be specified (by default)");
         let (margin_top, margin_right, margin_bottom, margin_left) = margins;
 
@@ -112,8 +120,9 @@ impl Model {
 
             rx,
             tx,
-            reader_timer: Instant::now(),
-            matcher_timer: Instant::now(),
+            reader_timer: Instant::now(),  // 初期化された時点で経過時間測定開始
+            matcher_timer: Instant::now(), // 初期化された時点で経過時間測定開始
+
             reader_control: None,
             matcher_control: None,
             matcher_mode: None,
@@ -261,7 +270,7 @@ impl Model {
             let hb_timer_guard =
                 self.timer
                     .schedule_with_delay(TimerDuration::milliseconds(REFRESH_DURATION), move || {
-                        let _ = tx.send((Event::EvHeartBeat, Box::new(true)));
+                        let _ = tx.send((Event::EvHeartBeat, Box::new(true))); // poring的に送信しているハートビート?
                     });
             self.hb_timer_guard.replace(hb_timer_guard);
         }
@@ -370,16 +379,16 @@ impl Model {
             cmd_query: self.query.get_cmd_query(),
             clear_selection: ClearStrategy::DontClear,
         };
-
         self.reader_control = Some(self.reader.run(&env.cmd));
-
         // In the event loop, thhere might need
         let mut next_event = None;
         loop {
             let (ev, arg) = if next_event.is_some() {
                 next_event.take().unwrap()
+            // イベント受信
             } else if let Ok((ev, arg)) = self.rx.recv() {
-                (ev, arg)
+                // println!("{:?}, {:?}", ev, arg);
+                (ev, arg) // eventと入力値?Any?
             } else {
                 break; // end of the event stream;
             };
@@ -481,16 +490,14 @@ impl Model {
             }
 
             // dispatch events to sub-components
-            /*
             if self.header.accept_event(ev) {
                 self.header.handle(ev, &arg);
             }
-            */
 
             // EvActAddCharを拾うところ(もちろん他の特定のイベントも)
             if self.query.accept_event(ev) {
                 // println!("true! {:?}", ev);
-                self.query.handle(ev, &arg);
+                self.query.handle(ev, &arg); // 入力値の追加
                 env.cmd_query = self.query.get_cmd_query();
 
                 let new_query = self.query.get_query();
@@ -524,7 +531,7 @@ impl Model {
                 }
             }
 
-            let _ = self.term.draw(self);
+            let _ = self.term.draw(self); // selfはModelで、ModelはDrawを実装している
             let _ = self.term.present();
         } // loop 終了
 
@@ -532,8 +539,13 @@ impl Model {
     }
 
     fn consume_additional_event(&self, target_event: Event) -> Option<(Event, EventArg)> {
+        // 引数で受け取ったイベントとrxで受けったイベントが一致することを確認
+        // 一致したら、rxのイベントのイテレータを１つ進める。一致しないならbreak
         // consume additional HeartBeat event
         let mut rx_try_iter = self.rx.try_iter().peekable();
+        // peekをすると先読みできて、nextで進める
+        // 先読みと減らすイベントが異なる場合、ループを抜ける
+        // println!("{:?}", rx_try_iter);
         while let Some((ev, _)) = rx_try_iter.peek() {
             if *ev == target_event {
                 let _ = rx_try_iter.next();
@@ -587,6 +599,7 @@ struct ModelEnv {
 impl Draw for Model {
     fn draw(&self, canvas: &mut dyn Canvas) -> Result<()> {
         let (_screen_width, _screen_height) = canvas.size()?;
+        // println!("{:?} ,{:?}", _screen_width, _screen_height);
 
         let total = self.item_pool.len();
         let matcher_mode = if self.matcher_mode.is_none() {
@@ -620,15 +633,22 @@ impl Draw for Model {
         };
 
         let win_selection = Win::new(&self.selection);
+        // query
         let win_query = Win::new(&self.query)
             .basis(if self.inline_info { 0 } else { 1 })
             .grow(0)
             .shrink(0);
+
+        // status
         let win_status = Win::new(&status)
             .basis(if self.inline_info { 0 } else { 1 })
             .grow(0)
             .shrink(0);
+
+        // hader
         let win_header = Win::new(&self.header).grow(0).shrink(0);
+
+        // query_status
         let win_query_status = HSplit::default()
             .basis(if self.inline_info { 1 } else { 0 })
             .grow(0)
@@ -680,6 +700,7 @@ impl Draw for Model {
                 Direction::Left => Box::new(HSplit::default().split(win_preview).split(win_main)),
             }
         } else {
+            // println!("test"); // preview windowを使わない場合ほぼこっち
             Box::new(win_main)
         };
 
@@ -692,6 +713,7 @@ impl Draw for Model {
     }
 }
 
+// StatusのUI
 struct Status {
     total: usize,
     matched: usize,
@@ -708,6 +730,7 @@ struct Status {
     inline_info: bool,
 }
 
+//
 #[allow(unused_assignments)]
 impl Draw for Status {
     fn draw(&self, canvas: &mut dyn Canvas) -> Result<()> {
@@ -724,11 +747,13 @@ impl Draw for Status {
         let a_while_since_match = self.time_since_match > Duration::from_millis(50);
 
         let mut col = 0;
+        // ほぼfalse
         if self.inline_info {
-            col += canvas.print_with_attr(0, col, " <", self.theme.prompt())?;
+            col += canvas.print_with_attr(0, col, " <", self.theme.prompt())?; // ?
         } else {
             // draw the spinner
             if self.reading && a_while_since_read {
+                // durationミリセカンド(u32)に変換している
                 let mills = (self.time_since_read.as_secs() * 1000) as u32 + self.time_since_read.subsec_millis();
                 let index = (mills / SPINNER_DURATION) % (SPINNERS.len() as u32);
                 let ch = SPINNERS[index as usize];

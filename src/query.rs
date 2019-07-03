@@ -184,8 +184,10 @@ impl Query {
     }
 
     pub fn act_add_char(&mut self, ch: char) {
-        let (before, _) = self.get_ref();
-        before.push(ch);
+        let (before, _) = self.get_ref(); // query_before query_after | cmd_before cmd_after
+
+        // println!("{:?}", before); // 前の文字列が取れる
+        before.push(ch); // 入力値を追加する
     }
 
     pub fn act_backward_delete_char(&mut self) {
@@ -396,7 +398,8 @@ impl EventHandler for Query {
             // 文字列追加した際の動作
             EvActAddChar => {
                 let ch: char = *arg.downcast_ref().expect("EvActAddChar: failed to get argument");
-                self.act_add_char(ch);
+                // println!("{:?}", ch);
+                self.act_add_char(ch); // 入力値を追加
             }
 
             EvActDeleteChar | EvActDeleteCharEOF => {
