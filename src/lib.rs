@@ -94,6 +94,11 @@ impl Skim {
 
         //------------------------------------------------------------------------------
         // model + previewer
+        // Model::newはコンフィグ設定で非常に重要な役割を担っている
+        // この前の処理でSkimOptionにParseした値をnew関数に代入することで
+        // queryやmatcherという各責務を持つコンポーネントのコンフィグクラスに設定を入れ直す
+        // 例えばoption.cmdはquery.base_cmdに入れ直される
+        // そのqueryはModel.queryに設定される
         let mut model = Model::new(rx, tx, reader, term.clone(), &options);
         let ret = model.start(); // イベントレシーバ処理の根幹がここっぽい
 

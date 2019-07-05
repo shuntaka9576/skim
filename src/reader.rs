@@ -19,6 +19,7 @@ use std::time::Duration;
 
 const DELIMITER_STR: &str = r"[\t\n ]+";
 
+#[derive(Debug)]
 pub struct ReaderControl {
     stopped: Arc<AtomicBool>,
     thread_reader: JoinHandle<()>,
@@ -62,6 +63,7 @@ impl Reader {
         self
     }
 
+    // -c オプションのコマンド実行してそうなところ
     pub fn run(&mut self, cmd: &str) -> ReaderControl {
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_clone = stopped.clone();
@@ -171,6 +173,7 @@ lazy_static! {
     static ref NUM_MAP: RwLock<HashMap<String, usize>> = RwLock::new(HashMap::new());
 }
 
+// reader.runでは別スレッド上で実行されている
 fn reader(
     cmd: &str,
     stopped: Arc<AtomicBool>,
@@ -230,6 +233,7 @@ fn reader(
                 } else if buffer.ends_with(&[b'\n']) || buffer.ends_with(&[b'\0']) {
                     buffer.pop();
                 }
+                // thread::sleep_ms(3000);
 
                 let item = Item::new(
                     String::from_utf8_lossy(&buffer),

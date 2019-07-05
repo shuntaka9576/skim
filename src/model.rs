@@ -379,10 +379,15 @@ impl Model {
             cmd_query: self.query.get_cmd_query(),
             clear_selection: ClearStrategy::DontClear,
         };
+
+        // -cでまたは環境変数コマンドを実行している?
         self.reader_control = Some(self.reader.run(&env.cmd));
-        // In the event loop, thhere might need
+        // In tee event loop, thhere might need
         let mut next_event = None;
         loop {
+            // 下記のstoppedは、-cオプションで実行したコマンド終了したら、trueになるっぽい
+            // Some(ReaderControl { stopped: false, thread_reader: JoinHandle { .. }, items: SpinLock { locked: false, data: UnsafeCell } })
+            println!("{:?}", self.reader_control); // Debugトレイトをつけて見えるようにした
             let (ev, arg) = if next_event.is_some() {
                 next_event.take().unwrap()
             // イベント受信
@@ -502,6 +507,7 @@ impl Model {
 
                 let new_query = self.query.get_query();
                 let new_cmd = self.query.get_cmd();
+                // println!("{}", new_cmd);
 
                 // re-run reader & matcher if needed;
                 if new_cmd != env.cmd {
