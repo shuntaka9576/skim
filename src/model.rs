@@ -387,7 +387,7 @@ impl Model {
         loop {
             // 下記のstoppedは、-cオプションで実行したコマンド終了したら、trueになるっぽい
             // Some(ReaderControl { stopped: false, thread_reader: JoinHandle { .. }, items: SpinLock { locked: false, data: UnsafeCell } })
-            println!("{:?}", self.reader_control); // Debugトレイトをつけて見えるようにした
+            // println!("{:?}", self.reader_control); // Debugトレイトをつけて見えるようにした
             let (ev, arg) = if next_event.is_some() {
                 next_event.take().unwrap()
             // イベント受信
@@ -576,6 +576,7 @@ impl Model {
         let processed = self.reader_control.as_ref().map(|c| c.is_done()).unwrap_or(true);
         if !processed {
             // take out new items and put them into items
+            // as_refは&Option<T>をOption<&T>する。元の値を借りずに参照だけを扱える
             let new_items = self.reader_control.as_ref().map(|c| c.take()).unwrap();
             self.item_pool.append(new_items);
         };

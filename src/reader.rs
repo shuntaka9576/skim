@@ -64,13 +64,16 @@ impl Reader {
     }
 
     // -c オプションのコマンド実行してそうなところ
+    // TODO Readerの初期化状態を確認すべき
     pub fn run(&mut self, cmd: &str) -> ReaderControl {
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_clone = stopped.clone();
-        stopped.store(false, Ordering::SeqCst);
+        stopped.store(false, Ordering::SeqCst); // 初回はfalse, Ordering::SeqCstはよくわからない。スレッドの順序がどうこう..
+
         let items = Arc::new(SpinLock::new(Vec::new()));
         let items_clone = items.clone();
-        let option_clone = self.option.clone();
+
+        let option_clone = self.option.clone(); // 多分Model::newで初期化されたことをクローンしている?
         let source_file = self.source_file.take();
         let cmd = cmd.to_string();
 
@@ -80,7 +83,7 @@ impl Reader {
         });
 
         ReaderControl {
-            stopped,
+            stopped, // thread safeな値の参照
             thread_reader,
             items,
         }
@@ -148,6 +151,7 @@ impl ReaderOption {
 type CommandOutput = (Option<Child>, Box<dyn BufRead + Send>);
 fn get_command_output(cmd: &str) -> Result<CommandOutput, Box<dyn Error>> {
     let shell = env::var("SHELL").unwrap_or_else(|_| "sh".to_string());
+    println!("{}", shell);
     let mut command = Command::new(shell)
         .arg("-c")
         .arg(cmd)
@@ -181,17 +185,22 @@ fn reader(
     option: Arc<ReaderOption>,
     source_file: Option<Box<dyn BufRead + Send>>,
 ) {
+    // command実行箇所?
     let (command, mut source) = source_file
         .map(|f| (None, f))
         .unwrap_or_else(|| get_command_output(cmd).expect("command not found"));
 
     let command_stopped = Arc::new(AtomicBool::new(false));
 
-    let stopped_clone = stopped.clone();
-    let command_stopped_clone = command_stopped.clone();
+    let stopped_clone = stopped.clone(); // stopped(false)
+    let command_stopped_clone = command_stopped.clone(); // command_stopped(false)
     thread::spawn(move || {
         // kill command if it is got
+        // 起動直後はこのループが周り続けそう(stopped_cloneの値がどこかでtrueになったら終わる)
+        // stopped_cloneは、おそらく-cオプションで指定したコマンド終了時にtrueになる?
+        // 誰がstopped_cloneを書き換えているのか?
         while command.is_some() && !stopped_clone.load(Ordering::Relaxed) {
+            println!("{}", stopped_clone.load(Ordering::Relaxed));
             thread::sleep(Duration::from_millis(5));
         }
 
@@ -221,8 +230,13 @@ fn reader(
     loop {
         buffer.clear();
         // start reading
+        // line_endingはデフォルト b'\n'
+        // コマンド実行結果のうち改行を含むまでの数値がnに入る
+        // 改行までの値は、bufferに入る。sourceはbufferに入った分なくなる
         match source.read_until(opt.line_ending, &mut buffer) {
             Ok(n) => {
+                // コマンド実行後この条件が満たされて、stoppedがtrueになる
+                // 結果をbufferに改行ごとに入れて、sourceの中身がなくなったらbreak
                 if n == 0 {
                     break;
                 }
@@ -246,6 +260,8 @@ fn reader(
 
                 {
                     // save item into pool
+                    // ReaderControlのitemsフィールド, ArcでSpinLockなVec
+                    // TUIのrowを管理している?
                     let mut vec = items.lock();
                     vec.push(Arc::new(item));
                     index += 1;
@@ -259,7 +275,9 @@ fn reader(
         }
     }
 
-    stopped.store(true, Ordering::Relaxed);
+    stopped.store(true, Ordering::Relaxed); // -cオプションのコマンド終了時に上述で立ち上げたthreadのwhile条件から抜けさせる
+
+    // TODO ここの存在意義
     while !command_stopped.load(Ordering::Relaxed) {
         thread::sleep(Duration::from_millis(5));
     }
