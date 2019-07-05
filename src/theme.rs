@@ -50,6 +50,7 @@ pub struct ColorTheme {
 impl ColorTheme {
     pub fn init_from_options(options: &SkimOptions) -> ColorTheme {
         // register
+        // defaultはNone
         if let Some(color) = options.color {
             ColorTheme::from_options(color)
         } else {
@@ -113,6 +114,7 @@ impl ColorTheme {
     }
 
     fn dark256() -> Self {
+        // Color型はtuikit
         ColorTheme {
             matched:          Color::AnsiValue(108),
             matched_bg:       Color::AnsiValue(0),
