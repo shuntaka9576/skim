@@ -381,7 +381,11 @@ impl Model {
         };
 
         // -cでまたは環境変数コマンドを実行している?
-        self.reader_control = Some(self.reader.run(&env.cmd));
+        self.reader_control = Some(self.reader.run(&env.cmd)); // Option<ReaderControl>
+
+        // 中身が遠い.. Arc<SpinLock<Vec<Arc<Item>>>>
+        // println!("{:?}", self.reader_control.as_ref().unwrap().items);
+
         // In tee event loop, thhere might need
         let mut next_event = None;
         loop {
@@ -440,7 +444,7 @@ impl Model {
                     let accept_key = arg.downcast_ref::<Option<String>>().and_then(|os| os.as_ref().cloned());
 
                     if let Some(ctrl) = self.reader_control.take() {
-                        ctrl.kill();
+                        ctrl.kill(); // boolにtrueを入れて強制終了?
                     }
                     if let Some(ctrl) = self.matcher_control.take() {
                         ctrl.kill();

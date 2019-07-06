@@ -23,7 +23,7 @@ const DELIMITER_STR: &str = r"[\t\n ]+";
 pub struct ReaderControl {
     stopped: Arc<AtomicBool>,
     thread_reader: JoinHandle<()>,
-    items: Arc<SpinLock<Vec<Arc<Item>>>>,
+    pub items: Arc<SpinLock<Vec<Arc<Item>>>>,
 }
 
 impl ReaderControl {
@@ -64,6 +64,7 @@ impl Reader {
     }
 
     // -c オプションのコマンド実行してそうなところ
+    // 引数にコマンドを入れると実行してくレル関数
     // TODO Readerの初期化状態を確認すべき
     pub fn run(&mut self, cmd: &str) -> ReaderControl {
         let stopped = Arc::new(AtomicBool::new(false));
@@ -74,17 +75,18 @@ impl Reader {
         let items_clone = items.clone();
 
         let option_clone = self.option.clone(); // 多分Model::newで初期化されたことをクローンしている?
-        let source_file = self.source_file.take();
+        let source_file = self.source_file.take(); // Noneで初期化されている
         let cmd = cmd.to_string();
 
         // start the new command
+        // コマンド実行は別スレッドされるが、コマンド結果を受け取るまでこのスレッドはブロックする
         let thread_reader = thread::spawn(move || {
             reader(&cmd, stopped_clone, items_clone, option_clone, source_file);
         });
 
         ReaderControl {
-            stopped, // thread safeな値の参照
-            thread_reader,
+            stopped,       // AtomicBool(コマンドの実行の終了を渡す)
+            thread_reader, // 実行結果を渡す
             items,
         }
     }
@@ -147,23 +149,32 @@ impl ReaderOption {
         }
     }
 }
-
+// Sendでスレッド間で送信可能になる
 type CommandOutput = (Option<Child>, Box<dyn BufRead + Send>);
+
+// 引数に与えられたコマンドを元に、子プロセスを実行
+// 子プロセスを表すchildとsの標準出力stdoutを返却
+// Result<(CommandOutput, Box<dyn Error>)とは書かない? -> 勘違い
+// Reuslt<T,E>でOk(T)でErr(E)が返却
+// CommandOputputってErrorをトレイトオブジェクトで返す
 fn get_command_output(cmd: &str) -> Result<CommandOutput, Box<dyn Error>> {
     let shell = env::var("SHELL").unwrap_or_else(|_| "sh".to_string());
     println!("{}", shell);
     let mut command = Command::new(shell)
         .arg("-c")
         .arg(cmd)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()?;
+        .stdout(Stdio::piped()) // 標準出力はパイプに書く
+        .stderr(Stdio::null()) // 標準エラー出力は/dev/nullに書く
+        .spawn()?; // 失敗したら、Errorがこの時点で返却される Reuslt<Child>
 
     let stdout = command
-        .stdout
-        .take()
-        .ok_or_else(|| "command output: unwrap failed".to_owned())?;
+        .stdout // Option<ChildStdout>
+        .take() // 値がある場合はSome(T)、ない場合はNone。panicが起きないので、safeなメソッド
+        .ok_or_else(|| "command output: unwrap failed".to_owned())?; // ChildStdout
 
+    // commandはchild
+    // BufRead::newはRead Traitがついて入れば引数に取れる
+    // ChildStdoutはReadTraitが付いてているのOK
     Ok((Some(command), Box::new(BufReader::new(stdout))))
 }
 
@@ -186,8 +197,10 @@ fn reader(
     source_file: Option<Box<dyn BufRead + Send>>,
 ) {
     // command実行箇所?
-    let (command, mut source) = source_file
-        .map(|f| (None, f))
+    // コマンド実行はブロックする
+    let (command, mut source) = source_file // Some(ChildStdout), Box::new(BufReader::new(stdout))
+        .map(|f| (None, f)) // NoneとOption<Box..型を返す(sourceがあるなら、それを返せよという意味)
+        // get_command_outputでOk((Some(command<Child>), Box::new(BufReader::new(stdout))))が返却
         .unwrap_or_else(|| get_command_output(cmd).expect("command not found"));
 
     let command_stopped = Arc::new(AtomicBool::new(false));
@@ -200,11 +213,12 @@ fn reader(
         // stopped_cloneは、おそらく-cオプションで指定したコマンド終了時にtrueになる?
         // 誰がstopped_cloneを書き換えているのか?
         while command.is_some() && !stopped_clone.load(Ordering::Relaxed) {
-            println!("{}", stopped_clone.load(Ordering::Relaxed));
+            // println!("{}", stopped_clone.load(Ordering::Relaxed));
             thread::sleep(Duration::from_millis(5));
         }
 
         // clean up resources
+        // Optionの中身のChildを操作している
         if let Some(mut x) = command {
             let _ = x.kill();
             let _ = x.wait();
