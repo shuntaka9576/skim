@@ -78,11 +78,19 @@ impl Matcher {
     where
         C: Fn(Arc<SpinLock<Vec<MatchedItem>>>) + Send + 'static,
     {
+        // こんな感じで実行される
+        // .run(&query, self.item_pool.clone(), self.matcher_mode, move |_| {
+        // matcher_modeは,Defualt FazzyMode
+        //
+        // engin指定、デフォルトはMatcherMode::Fuzzy
         let matcher_engine = EngineFactory::build(&query, mode.unwrap_or(self.mode));
+
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_clone = stopped.clone();
+
         let processed = Arc::new(AtomicUsize::new(0));
         let processed_clone = processed.clone();
+
         let matched = Arc::new(AtomicUsize::new(0));
         let matched_clone = matched.clone();
         let matched_items = Arc::new(SpinLock::new(Vec::new()));
@@ -90,6 +98,11 @@ impl Matcher {
 
         let thread_matcher = thread::spawn(move || {
             let items = item_pool.take();
+            // ItemPoolGuard<Arc<Item>>型で返却される
+            // pub struct ItemPoolGuard<'a, T: Sized + 'a> {
+            //     guard: SpinLockGuard<'a, Vec<T>>,
+            //     start: usize,
+            // }
 
             // 1. use rayon for parallel
             // 2. return Err to skip iteration
@@ -102,6 +115,9 @@ impl Matcher {
                     if stopped.load(Ordering::Relaxed) {
                         Some(Err("matcher killed"))
                     } else if let Some(item) = matcher_engine.match_item(item.clone()) {
+                        // println!("{:?}", item);
+                        // thread::sleep_ms(1000); // Fuzzyモードの結果を収集している?
+
                         matched.fetch_add(1, Ordering::Relaxed);
                         Some(Ok(item))
                     } else {

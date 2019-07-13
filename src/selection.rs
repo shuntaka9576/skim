@@ -377,6 +377,7 @@ impl Selection {
         let (shift, full_width) =
             reshape_string(&text, container_width, match_start_char, match_end_char, self.tabstop);
 
+        // 行の箱を作成。これはutil.rsから作られている
         let mut printer = LinePrinter::builder()
             .row(row)
             .col(2)
@@ -390,11 +391,11 @@ impl Selection {
         // print out the original content
         if item.get_text_struct().is_some() && item.get_text_struct().as_ref().unwrap().has_attrs() {
             for (ch, attr) in item.get_text_struct().as_ref().unwrap().iter() {
-                printer.print_char(canvas, ch, default_attr.extend(attr), false);
+                printer.print_char(canvas, ch, default_attr.extend(attr), false); // 作った箱をprint_charでcanvasにwrite
             }
         } else {
             for ch in item.get_text().chars() {
-                printer.print_char(canvas, ch, default_attr, false);
+                printer.print_char(canvas, ch, default_attr, false); // rowの結果を一文字ずつセットしている
             }
         }
 
@@ -451,9 +452,7 @@ impl Draw for Selection {
 
             // print the cursor label
             let label = if line_cursor == self.line_cursor { ">" } else { " " };
-            let _next_col = canvas
-                .print_with_attr(line_no, 0, format!("{}", item_idx).as_ref(), self.theme.cursor())
-                .unwrap();
+            let _next_col = canvas.print_with_attr(line_no, 0, label, self.theme.cursor()).unwrap();
 
             let item = self
                 .items

@@ -223,6 +223,7 @@ impl Model {
         (direction, size, wrap, shown)
     }
 
+    // HEART_BEATはほぼずっと送信されているイベント
     fn act_heart_beat(&mut self, env: &mut ModelEnv) {
         // save the processed items
         let matcher_stopped = self
@@ -260,8 +261,10 @@ impl Model {
         let processed = reader_stopped && items_consumed;
 
         // run matcher if matcher had been stopped and reader had new items.
+        // もしmatcherが終了しており、readerが新しいアイテムを持っている場合
+        // items_consumedとreder_sttopedの両方がtrueだと実行されない
         if !processed && self.matcher_control.is_none() {
-            self.restart_matcher();
+            self.restart_matcher(); // コメントアウトする結果が出力されない
         }
 
         // send next heart beat if matcher is still running or there are items not been processed.
@@ -567,6 +570,7 @@ impl Model {
         return rx_try_iter.next(); // カーソルを進めてイベントを消費する
     }
 
+    // matcherが初回実行されるのものここ?
     fn restart_matcher(&mut self) {
         self.matcher_timer = Instant::now();
         let query = self.query.get_query();
@@ -576,12 +580,17 @@ impl Model {
             ctrl.kill();
         }
 
+        // ここで、-cオプションで実行したコマンドの結果が移動されている
         // if there are new items, move them to item pool
-        let processed = self.reader_control.as_ref().map(|c| c.is_done()).unwrap_or(true);
+        // self.stopped.load(Ordering::Relaxed) &&
+        // items.is_empty()であることを確認。itemがあるのであればif文が実行される
+        let processed = self.reader_control.as_ref().map(|c| c.is_done()).unwrap_or(true); // 実行結果の取得
         if !processed {
             // take out new items and put them into items
             // as_refは&Option<T>をOption<&T>する。元の値を借りずに参照だけを扱える
-            let new_items = self.reader_control.as_ref().map(|c| c.take()).unwrap();
+            let new_items = self.reader_control.as_ref().map(|c| c.take()).unwrap(); // ReaderControlのtake()メソッドで、itemsを取得して、item_poolのなかに入れ直す
+
+            // println!("{:?}", new_items);
             self.item_pool.append(new_items);
         };
 
@@ -589,6 +598,8 @@ impl Model {
         let _ = self.tx.send((Event::EvHeartBeat, Box::new(true)));
 
         let tx = self.tx.clone();
+
+        // ここでmatcherが初めて実行される?
         let new_matcher_control = self
             .matcher
             .run(&query, self.item_pool.clone(), self.matcher_mode, move |_| {
@@ -623,7 +634,7 @@ impl Draw for Model {
         let matched = self.num_options + self.matcher_control.as_ref().map(|c| c.get_num_matched()).unwrap_or(0);
         let matcher_running = self.item_pool.num_not_taken() != 0 || matched != self.num_options;
         let processed = self
-            .matcher_control
+            .matcher_control // fuzzyengin -> mather -> modelでデータが遷移
             .as_ref()
             .map(|c| c.get_num_processed())
             .unwrap_or(total);

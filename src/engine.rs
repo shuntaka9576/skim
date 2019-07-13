@@ -3,6 +3,7 @@ use crate::item::{Item, MatchedItem, MatchedRange, Rank};
 use crate::score;
 use regex::Regex;
 use std::sync::Arc;
+use std::thread;
 
 lazy_static! {
     static ref RE_AND: Regex = Regex::new(r"([^ |]+( +\| +[^ |]*)+)|( +)").unwrap();
@@ -121,6 +122,7 @@ impl MatchEngine for FuzzyEngine {
     fn match_item(&self, item: Arc<Item>) -> Option<MatchedItem> {
         // iterate over all matching fields:
         let mut matched_result = None;
+        // thread::sleep_ms(100); // FuzzzyModeの算出?
         for &(start, end) in item.get_matching_ranges() {
             matched_result = score::fuzzy_match(&item.get_text()[start..end], &self.query).map(|(s, vec)| {
                 if start != 0 {
