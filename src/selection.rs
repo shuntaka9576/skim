@@ -318,7 +318,13 @@ impl EventHandler for Selection {
 }
 
 impl Selection {
-    fn draw_item(&self, canvas: &mut dyn Canvas, row: usize, matched_item: &MatchedItem, is_current: bool) -> Result<()> {
+    fn draw_item(
+        &self,
+        canvas: &mut dyn Canvas,
+        row: usize,
+        matched_item: &MatchedItem,
+        is_current: bool,
+    ) -> Result<()> {
         let (screen_width, screen_height) = canvas.size()?;
 
         // update item heights
@@ -445,13 +451,16 @@ impl Draw for Selection {
 
             // print the cursor label
             let label = if line_cursor == self.line_cursor { ">" } else { " " };
-            let _next_col = canvas.print_with_attr(line_no, 0, label, self.theme.cursor()).unwrap();
+            let _next_col = canvas
+                .print_with_attr(line_no, 0, format!("{}", item_idx).as_ref(), self.theme.cursor())
+                .unwrap();
 
             let item = self
                 .items
                 .get(item_idx)
                 .unwrap_or_else(|| panic!("model:draw_items: failed to get item at {}", item_idx));
 
+            // rowの中身を表示している処理
             let _ = self.draw_item(canvas, line_no, &item, line_cursor == self.line_cursor);
         }
 

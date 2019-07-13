@@ -613,6 +613,7 @@ impl Draw for Model {
         // println!("{:?} ,{:?}", _screen_width, _screen_height);
 
         let total = self.item_pool.len();
+        // Fuzzyがデフォルト、他にMatcherMode::Exact;とMatcherMode::Regex;が存在する
         let matcher_mode = if self.matcher_mode.is_none() {
             "".to_string()
         } else {

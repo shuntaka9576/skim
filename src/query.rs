@@ -477,6 +477,7 @@ impl EventHandler for Query {
     }
 }
 
+// Queryにはmodeが2つ(Ctr+q)で変更可能
 impl Draw for Query {
     fn draw(&self, canvas: &mut dyn Canvas) -> Result<()> {
         canvas.clear()?;
@@ -486,9 +487,11 @@ impl Draw for Query {
 
         let prompt_width = canvas.print_with_attr(0, 0, prompt, self.theme.prompt())?;
         let before_width = canvas.print_with_attr(0, prompt_width, &before, self.theme.query())?;
-        let col = prompt_width + before_width;
+        let col = prompt_width + before_width; // 現在の入力位置を算出
+
+        // canvas.print_with_attr(0, col, format!("{:?}", &col).as_ref(), self.theme.query())?; // 第一引数は縦。第二引数は横
         canvas.print_with_attr(0, col, &after, self.theme.query())?;
-        canvas.set_cursor(0, col)?;
+        canvas.set_cursor(0, col)?; // shellの機能? 文字入力の時には必ず出てくるやつ
         canvas.show_cursor(true)?;
         Ok(())
     }
