@@ -190,7 +190,7 @@ fn get_default_key_map() -> HashMap<Key, ActionChain> {
     ret.insert(Key::BackTab,      vec![(Event::EvActToggle,             None), (Event::EvActUp,   None)]);
     ret.insert(Key::Ctrl('u'),    vec![(Event::EvActUnixLineDiscard,    None)]);
     ret.insert(Key::Ctrl('w'),    vec![(Event::EvActUnixWordRubout,     None)]);
-    ret.insert(Key::Ctrl('p'),    vec![(Event::EvActUp,                 None)]);
+    ret.insert(Key::Ctrl('p'),    vec![(Event::EvActUp,                 None)]); // カーソルを１つあげる
     ret.insert(Key::Ctrl('k'),    vec![(Event::EvActUp,                 None)]);
     ret.insert(Key::Up,           vec![(Event::EvActUp,                 None)]);
     ret.insert(Key::Ctrl('y'),    vec![(Event::EvActYank,               None)]);
